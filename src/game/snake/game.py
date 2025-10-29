@@ -63,6 +63,12 @@ class AlgorithmState:
     def path_cells(self) -> Set[Coord]:
         return set(self.result.path)
 
+    def path_remaining(self) -> List[Coord]:
+        if not self.result.path:
+            return []
+        start_index = min(self.path_step, len(self.result.path) - 1)
+        return self.result.path[start_index:]
+
 
 class SnakeGame:
     def __init__(self, screen: Optional[pygame.Surface] = None, grid_size: int = GRID_SIZE):
@@ -194,8 +200,11 @@ class SnakeGame:
         path_cells = set()
         if self.state:
             visited = self.state.visited_cells()
-            frontier = self.state.frontier_cells()
-            path_cells = self.state.path_cells()
+            if self.state.visited_complete() and self.state.result.succeeded:
+                frontier = set()
+                path_cells = set(self.state.path_remaining())
+            else:
+                frontier = self.state.frontier_cells()
 
         for cell in visited:
             self._fill_cell(cell, COLOR_VISITED)

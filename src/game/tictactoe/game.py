@@ -139,6 +139,7 @@ class TicTacToeGame:
         self._draw_grid()
         self._draw_marks()
         self._draw_hud()
+        self._draw_game_over()
 
     def _draw_grid(self) -> None:
         for i in range(1, self.GRID_SIZE):
@@ -177,21 +178,53 @@ class TicTacToeGame:
             pygame.draw.rect(self.screen, COLOR_ALERT, highlight_rect, 4)
 
     def _draw_hud(self) -> None:
-        margin_top = self.cell_size * self.GRID_SIZE + 20
         lines = [
             f"Turn: {'Player (X)' if self.turn == 'X' else 'AI (O)'}",
             f"Score  Player: {self.scoreboard.player}  AI: {self.scoreboard.ai}",
             f"Nodes explored: {self.minimax_nodes}",
             "R - Restart    ESC - Menu",
         ]
-        if self.game_over:
-            if self.winner == "X":
-                lines.insert(0, "Player wins! -1 point")
-            elif self.winner == "O":
-                lines.insert(0, "AI wins! +1 point")
-            else:
-                lines.insert(0, "Draw - 0 points")
 
         for idx, text in enumerate(lines):
             surface = self.font_small.render(text, True, COLOR_WHITE)
-            self.screen.blit(surface, (20, margin_top + idx * 22))
+            self.screen.blit(surface, (20, 20 + idx * 22))
+
+    def _draw_game_over(self) -> None:
+        if not self.game_over:
+            return
+
+        if self.winner == "X":
+            headline = "Player wins!"
+            detail = "-1 point"
+        elif self.winner == "O":
+            headline = "AI wins!"
+            detail = "+1 point"
+        else:
+            headline = "Draw"
+            detail = "0 points"
+
+        overlay_width = int(WINDOW_WIDTH * 0.75)
+        overlay_height = 160
+        overlay = pygame.Surface((overlay_width, overlay_height), pygame.SRCALPHA)
+        overlay.fill((20, 20, 20, 220))
+
+        top_left_x = (WINDOW_WIDTH - overlay_width) // 2
+        top_left_y = (WINDOW_HEIGHT - overlay_height) // 2
+        self.screen.blit(overlay, (top_left_x, top_left_y))
+
+        title_surface = self.font_medium.render(headline, True, COLOR_WHITE)
+        detail_surface = self.font_small.render(detail, True, COLOR_WHITE)
+        hint_surface = self.font_small.render("Press R to restart or ESC for menu", True, COLOR_WHITE)
+
+        self.screen.blit(
+            title_surface,
+            (top_left_x + (overlay_width - title_surface.get_width()) // 2, top_left_y + 30),
+        )
+        self.screen.blit(
+            detail_surface,
+            (top_left_x + (overlay_width - detail_surface.get_width()) // 2, top_left_y + 70),
+        )
+        self.screen.blit(
+            hint_surface,
+            (top_left_x + (overlay_width - hint_surface.get_width()) // 2, top_left_y + 110),
+        )
