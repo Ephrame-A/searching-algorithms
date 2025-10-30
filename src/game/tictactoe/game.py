@@ -56,7 +56,7 @@ class TicTacToeGame:
         self.turn = "X"  # Player always starts
         self.cell_size = WINDOW_HEIGHT // self.GRID_SIZE
 
-    # Public API --------------------------------------------------------
+    # Public API
     def run(self) -> None:
         running = True
         while running:

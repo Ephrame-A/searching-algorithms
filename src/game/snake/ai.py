@@ -36,11 +36,16 @@ class SearchResult:
 
 
 class SnakeAI:
-    def __init__(self, grid_size: int | None = None):
+    def __init__(self, grid_size: int | None = None, turn_penalty: float = 0.5):
+        """Create a SnakeAI.
+
+        turn_penalty: extra cost added when the move changes direction from the previous move.
+        """
         self.grid_size = grid_size
+        self.turn_penalty = float(turn_penalty)
         self._directions: Tuple[Coord, ...] = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
-    # Depth-first search -------------------------------------------------
+    # Depth-first search
     def dfs(self, start: Coord, goal: Coord, grid: Grid) -> SearchResult:
         stack: List[Coord] = [start]
         parents: Dict[Coord, Coord | None] = {start: None}
@@ -65,7 +70,7 @@ class SnakeAI:
 
         return self._failure(visited_order, frontier_history)
 
-    # Breadth-first search -----------------------------------------------
+    # Breadth-first search
     def bfs(self, start: Coord, goal: Coord, grid: Grid) -> SearchResult:
         queue: deque[Coord] = deque([start])
         parents: Dict[Coord, Coord | None] = {start: None}
@@ -90,11 +95,11 @@ class SnakeAI:
 
         return self._failure(visited_order, frontier_history)
 
-    # Uniform cost search ------------------------------------------------
+    # Uniform cost search
     def ucs(self, start: Coord, goal: Coord, grid: Grid) -> SearchResult:
-        heap: List[Tuple[int, Coord]] = [(0, start)]
+        heap: List[Tuple[float, Coord]] = [(0.0, start)]
         parents: Dict[Coord, Coord | None] = {start: None}
-        costs: Dict[Coord, int] = {start: 0}
+        costs: Dict[Coord, float] = {start: 0.0}
         visited: Set[Coord] = set()
         visited_order: List[Coord] = []
         frontier_history: List[Set[Coord]] = [set(node for _, node in heap)]
@@ -108,7 +113,15 @@ class SnakeAI:
             if current == goal:
                 return self._success(parents, goal, visited_order, frontier_history)
             for neighbor in self._neighbors(current, grid):
-                new_cost = cost + 1
+                # base move cost = 1, add turn penalty if direction changed
+                parent = parents.get(current)
+                turn_cost = 0.0
+                if parent is not None:
+                    prev_dir = (current[0] - parent[0], current[1] - parent[1])
+                    new_dir = (neighbor[0] - current[0], neighbor[1] - current[1])
+                    if prev_dir != new_dir:
+                        turn_cost = self.turn_penalty
+                new_cost = cost + 1.0 + turn_cost
                 if neighbor not in costs or new_cost < costs[neighbor]:
                     costs[neighbor] = new_cost
                     parents[neighbor] = current
@@ -117,11 +130,11 @@ class SnakeAI:
 
         return self._failure(visited_order, frontier_history)
 
-    # A* search ----------------------------------------------------------
+    # A* search
     def a_star(self, start: Coord, goal: Coord, grid: Grid) -> SearchResult:
-        heap: List[Tuple[int, int, Coord]] = [(self._heuristic(start, goal), 0, start)]
+        heap: List[Tuple[float, float, Coord]] = [(self._heuristic(start, goal), 0.0, start)]
         parents: Dict[Coord, Coord | None] = {start: None}
-        costs: Dict[Coord, int] = {start: 0}
+        costs: Dict[Coord, float] = {start: 0.0}
         visited: Set[Coord] = set()
         visited_order: List[Coord] = []
         frontier_history: List[Set[Coord]] = [set(node for _, _, node in heap)]
@@ -135,7 +148,15 @@ class SnakeAI:
             if current == goal:
                 return self._success(parents, goal, visited_order, frontier_history)
             for neighbor in self._neighbors(current, grid):
-                tentative_g = g_cost + 1
+                # base move cost = 1, add turn penalty when changing direction
+                parent = parents.get(current)
+                turn_cost = 0.0
+                if parent is not None:
+                    prev_dir = (current[0] - parent[0], current[1] - parent[1])
+                    new_dir = (neighbor[0] - current[0], neighbor[1] - current[1])
+                    if prev_dir != new_dir:
+                        turn_cost = self.turn_penalty
+                tentative_g = g_cost + 1.0 + turn_cost
                 if neighbor not in costs or tentative_g < costs[neighbor]:
                     costs[neighbor] = tentative_g
                     parents[neighbor] = current
@@ -145,7 +166,7 @@ class SnakeAI:
 
         return self._failure(visited_order, frontier_history)
 
-    # Helpers ------------------------------------------------------------
+    # Helpers
     def _neighbors(self, node: Coord, grid: Grid) -> Iterable[Coord]:
         width = len(grid[0])
         height = len(grid)

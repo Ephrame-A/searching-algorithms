@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 
 import pygame
-from pygame.locals import K_1, K_2, K_3, K_4, K_ESCAPE, K_r, KEYDOWN, QUIT
+from pygame.locals import K_1, K_2, K_3, K_4, K_ESCAPE, K_r, K_LEFTBRACKET, K_RIGHTBRACKET, KEYDOWN, QUIT
 
 from src.settings import (
     CELL_SIZE,
@@ -77,7 +77,9 @@ class SnakeGame:
         self.clock = pygame.time.Clock()
         self.font_small = pygame.font.Font(None, 22)
         self.font_medium = pygame.font.Font(None, 28)
-        self.ai = SnakeAI(grid_size)
+        # start with a noticeable default penalty so differences are visible
+        self.turn_penalty = 0.8
+        self.ai = SnakeAI(grid_size, turn_penalty=self.turn_penalty)
 
         self.algorithm_keys: Dict[int, str] = {
             K_1: "DFS",
@@ -105,7 +107,7 @@ class SnakeGame:
         self.state: Optional[AlgorithmState] = None
         self._search()
 
-    # Public API --------------------------------------------------------
+    # Public API
     def run(self) -> None:
         self.running = True
         while self.running:
@@ -116,7 +118,7 @@ class SnakeGame:
             self._draw()
             pygame.display.flip()
 
-    # Event handling ----------------------------------------------------
+    # Event handling
     def _handle_events(self) -> None:
         for event in pygame.event.get():
             if event.type == QUIT:
@@ -131,8 +133,18 @@ class SnakeGame:
                 elif event.key in self.algorithm_keys:
                     self.current_algorithm = self.algorithm_keys[event.key]
                     self._search()
+                elif event.key == K_LEFTBRACKET:
+                    # decrease penalty
+                    self.turn_penalty = max(0.0, round(self.turn_penalty - 0.1, 2))
+                    self.ai.turn_penalty = float(self.turn_penalty)
+                    self._search()
+                elif event.key == K_RIGHTBRACKET:
+                    # increase penalty
+                    self.turn_penalty = round(self.turn_penalty + 0.1, 2)
+                    self.ai.turn_penalty = float(self.turn_penalty)
+                    self._search()
 
-    # Game state --------------------------------------------------------
+    # Game state
     def _reset(self) -> None:
         self.obstacles.clear()
         self.snake_pos = (self.grid_size // 2, self.grid_size // 2)
@@ -181,7 +193,7 @@ class SnakeGame:
             length = max(0, len(result.path) - 1)
             self.status_message = f"{self.current_algorithm} path length: {length}"
 
-    # Rendering ---------------------------------------------------------
+    # Rendering
     def _draw(self) -> None:
         self.screen.fill(COLOR_BLACK)
         self._draw_grid()
@@ -230,11 +242,42 @@ class SnakeGame:
             "R-Reset  ESC-Menu",
             self.status_message,
         ]
+        # show main HUD in bottom-left
         for idx, text in enumerate(lines):
             surface = self.font_small.render(text, True, COLOR_WHITE)
             self.screen.blit(surface, (10, WINDOW_HEIGHT - (len(lines) - idx) * 20 - 10))
 
-    # Grid helpers -------------------------------------------------------
+        # show current turn-penalty and path cost at top-left
+        penalty_surface = self.font_small.render(f"Turn penalty: {self.turn_penalty}", True, COLOR_WHITE)
+        self.screen.blit(penalty_surface, (10, 10))
+        path_cost = self._compute_current_path_cost()
+        cost_surface = self.font_small.render(f"Path cost: {path_cost:.2f}", True, COLOR_WHITE)
+        self.screen.blit(cost_surface, (10, 32))
+        hint_surface = self.font_small.render("Adjust penalty: [  ]", True, COLOR_WHITE)
+        self.screen.blit(hint_surface, (10, 54))
+
+    def _compute_current_path_cost(self) -> float:
+        if not self.state or not self.state.result.path:
+            return 0.0
+        path = self.state.result.path
+        total = 0.0
+        # add base cost per move
+        for i in range(1, len(path)):
+            total += 1.0
+
+        # add turn penalties when direction changes
+        for i in range(1, len(path) - 1):
+            p = path[i - 1]
+            c = path[i]
+            n = path[i + 1]
+            prev_dir = (c[0] - p[0], c[1] - p[1])
+            new_dir = (n[0] - c[0], n[1] - c[1])
+            if prev_dir != new_dir:
+                total += self.turn_penalty
+
+        return total
+
+    # Grid helpers
     def _build_grid(self) -> List[List[int]]:
         grid = [[0 for _ in range(self.grid_size)] for _ in range(self.grid_size)]
         for ox, oy in self.obstacles:

@@ -24,7 +24,7 @@ class TicTacToeAI:
         result = self._minimax(board, depth=0, maximizing=True, alpha=-float("inf"), beta=float("inf"))
         return MinimaxResult(score=result.score, move=result.move, nodes_explored=self._nodes)
 
-    # Core minimax ------------------------------------------------------
+    # Core minimax
     def _minimax(
         self,
         board: Board,
@@ -73,7 +73,7 @@ class TicTacToeAI:
                 break
         return MinimaxResult(score=int(best_score), move=best_move, nodes_explored=self._nodes)
 
-    # Helpers -----------------------------------------------------------
+    # Helpers
     def _score(self, winner: Optional[str], depth: int) -> int:
         if winner == "O":
             return 1
